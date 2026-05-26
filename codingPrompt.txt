@@ -1,0 +1,222 @@
+任务一：完成后端 - 管理侧功能模块的开发
+- 后台登录页：采用响应式、沉浸式、自适应设计模式，界面风格以企业化管理软件风格为主，简约专业（后台登录页为管理员 admin 专员：默认登录用户名为：admin/admin888）
+- 后台主页：预留页面，后期开发完所有模块后再实现，本次任务不动代码。
+- 用户管理：实现用户新增 / 删除 / 批量删除 / 修改 / 分页（20 条）等功能。
+
+完成后台管理框架的前端界面开发
+- 通过 layui 开发后台经典管理界面，左侧为菜单 / 右侧为工作区。
+- 其他组件根据任务需求自行完善补充。
+
+任务二：
+继续后端 - 管理侧功能模块的开发
+-功能管理：将菜单侧功能化，实现动态管理所有功能模块
+-权限管理：功能与角色的映射关系模块，允许新增 / 修改 / 删除权限，采用二级联动的方式实现。
+-角色管理：默认超级管理员角色（不能修改和删除），允许新增角色，采用二级联动的方式实现。
+开发限制：
+-遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+
+
+
+
+任务三：
+继续后端 - 管理侧功能模块的开发
+-用户管理优化：需要增加角色设置，其中 admin 用户为默认系统用户，角色为超级管理员，该用户不能修改和删除，只能改密码。
+-用户管理列表：增加列显示角色信息
+开发限制：
+-遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+
+补充：系统管理模块下包含用户管理、角色管理、功能管理三个子模块。
+-用户管理
+--功能定位：管理系统用户账号信息。
+--界面说明：
+---以表格形式展示所有用户，列包括用户名、昵称、邮箱、状态、最后登录时间、创建时间。
+---支持新增用户、编辑用户信息、删除用户、启用禁用用户。
+---新增和编辑用户时，需要填写用户名、昵称、邮箱、密码，并分配角色。
+---支持按用户名和状态进行搜索筛选。
+
+-角色管理
+--功能定位：管理系统中的角色，用于权限分配。
+--界面说明：
+---以表格形式展示所有角色，列包括角色名称、角色标识、状态、创建时间、备注。
+---支持新增角色、编辑角色、删除角色、启用禁用角色。
+---新增或编辑角色时，需要填写角色名称、角色标识、备注，并为角色勾选可访问的功能权限。
+
+-功能管理
+--功能定位：管理系统中的所有功能模块及菜单项。
+--界面说明：
+---以树形结构展示系统所有功能菜单，包括首页、系统管理、智能瞭望、模型管理、数据管理、系统设置及其下级子模块。
+---支持新增功能节点、编辑功能节点、删除功能节点。
+---每个功能节点可配置功能名称、功能标识、父级节点、访问路径、排序号。
+---功能管理主要用于角色权限分配时引用，不直接面向普通用户操作。
+
+
+任务四：
+继续后端 - 管理侧功能模块的开发
+-模型引擎：
+-- 实现以橱窗列表的页面风格，
+-- 实现动态新增 / 修改 / 删除模型服务，
+-- 支持可视化配置满足 openai-api 范式的模型接入及接口调用服务，
+-- 支持模型 token 统计（可视化），支持分页一行 3 列，6 条数据为一列，由于设计到 AI 大模型，风格可以炫酷、高级感强，
+-- 支持对新增的模型进行对话测试功能，
+-- 支持设置模型为系统模式（如果为默认，则全局优先调用该模型）
+--模型响应支持SSE（流式响应）
+以下为模型服务代码示例：
+```
+curl https://aigc-api.aitoolcore.com/api/v1/chat/completions \
+  -H "Authorization: Bearer YOUR_API_KEY" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "model": "deepseek-v3",
+    "messages": [
+      {"role": "user", "content": "你好"}
+    ],
+    "stream": false
+  }'
+```
+以下为APIkey：
+apikey=sk-aigc-7300edb728b5ee7d5ccc9a15aeade201e80e22d6
+
+
+任务五：
+继续后端 - 管理侧功能模块的开发
+-瞭望管理：这是一个通过大模型 + AI 实现的智能数据采集模块，支持新增瞭望数据源管理和采集功能，以下为具体功能需求或要求：
+-- 瞭望数据源管理：该功能是一个动态可视化规则配置功能，支持新增 / 删除 / 修改采集源的规则，我这里给你提供一个采集源，你通过分析实现动态管理，如下：
+```
+百度新闻采集源：
+1、采集入口URL:
+https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&rsv_dl=ns_pc&word={关键字}
+https://www.baidu.com/s?rtt=1&bsst=1&cl=2&tn=news&rsv_dl=ns_pc&word={关键字}&pn={分页步进，默认0=第一页，10=第二页，20=第三页......}
+2、采集requestheader:
+GET /s?rtt=1&bsst=1&cl=2&tn=news&rsv_dl=ns_pc&word=%E5%9B%9B%E5%B7%9D%E5%86%9C%E4%B8%9A%E5%A4%A7%E5%AD%A6 HTTP/1.1
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.7
+Accept-Encoding: gzip, deflate, br, zstd
+Accept-Language: zh-CN,zh;q=0.9
+Connection: keep-alive
+Cookie: H_WISE_SIDS_BFESS=61027_62325_62862_62892_62926_63018_63050_63141_63154; BAIDUID=342D44680583CEA28F4255A82773A48C:FG=1; PSTM=1758727652; BIDUPSID=0C67E3F72A747D0A3EACA5395016E657; BD_UPN=12314753; BDUSS=3kyanBWTEs4UGd4dzJXYnJNcH5tejR4dXRDN25kWVBidVBSaEZjZzF2dTBFakZxSVFBQUFBJCQAAAAAAQAAAAEAAADdTvFTMTIzMzQ1Nzg4amdmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALSFCWq0hQlqb; BDUSS_BFESS=3kyanBWTEs4UGd4dzJXYnJNcH5tejR4dXRDN25kWVBidVBSaEZjZzF2dTBFakZxSVFBQUFBJCQAAAAAAQAAAAEAAADdTvFTMTIzMzQ1Nzg4amdmAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAALSFCWq0hQlqb; BDORZ=FFFB88E999055A3F8A630C64834BD6D0; H_PS_PSSID=63140_67603_67862_68165_69000_69201_69295_69570_69591_69617_69623_69686_69769_69782_69847_69921_69904_69962_70012_70050_70039_70138_70148_70153_70225_70184_70246_70202_70281_68736_70322_70355_70142_70434_70412_70467_70474_70472_70478; H_WISE_SIDS=63140_67603_67862_68165_69000_69201_69295_69570_69591_69617_69623_69686_69769_69782_69847_69921_69904_69962_70012_70050_70039_70138_70148_70153_70225_70184_70246_70202_70281_68736_70322_70355_70142_70434_70412_70467_70474_70472_70478; BAIDUID_BFESS=342D44680583CEA28F4255A82773A48C:FG=1; channel=nsl.lenovo.com.cn; BA_HECTOR=8kaka08k2k05ag2180a52k0kak802l1l13dh629; ZFY=4xt7:BKgb4PWHYG6:Bg:AZNQVsAfHeRKpIHegcZjbvU1JM:C; BAIDUEUID=19561324; minjie_card=1; BDRCVFR[3QcTWWX9MYc]=K7PavkeTFPTUAN8ULuEQhPEUi4WU6; delPer=0; BD_CK_SAM=1; baikeVisitId=bef406e3-e242-4644-ac92-37f123454d4a; shifen[10439036_33523]=1779586812; shifen[10439036_91638]=1779586812; BCLID=1289178561864095710; BCLID_BFESS=1289178561864095710; BDSFRCVID=kH0OJexroGWZM578LRpkEHtYogKK0gOTDYrENw85tqV2jT8V1JujEG0PtOi2xEPM4ch-ogKKXgOTH9rScg02Ojj6-UtVJemCXN0Ptf8g0M5; BDSFRCVID_BFESS=kH0OJexroGWZM578LRpkEHtYogKK0gOTDYrENw85tqV2jT8V1JujEG0PtOi2xEPM4ch-ogKKXgOTH9rScg02Ojj6-UtVJemCXN0Ptf8g0M5; H_BDCLCKID_SF=JR4H_CIhfCK3fP36q4Oo5tD_hgT22-us22-j2hcHMPoosU3LXj_beMAwKMR4Bn3kaKviaKJjBMbUotoHXRtWjJ0L3G5BLTvptmQtBq5TtUJM8nI42MomXj0SM2cyKMniyIv9-pPX-fOjeIt4XP68jCuA5bjZK4rmyg_jbPbDfn028DKu-n5jHjJWjNuJ3f; H_BDCLCKID_SF_BFESS=JR4H_CIhfCK3fP36q4Oo5tD_hgT22-us22-j2hcHMPoosU3LXj_beMAwKMR4Bn3kaKviaKJjBMbUotoHXRtWjJ0L3G5BLTvptmQtBq5TtUJM8nI42MomXj0SM2cyKMniyIv9-pPX-fOjeIt4XP68jCuA5bjZK4rmyg_jbPbDfn028DKu-n5jHjJWjNuJ3f; COOKIE_SESSION=1710_0_2_6_3_5_1_0_1_2_0_2_32877_0_0_0_1779584896_0_1779586811%7C9%23723676_22_1778070904%7C9; sugstore=1; SMARTINPUT=%5Bobject%20Object%5D; BDRCVFR[C0p6oIjvx-c]=mbxnW11j9Dfmh7GuZR8mvqV; PSINO=7; BDSVRTM=842; arialoadData=false
+Host: www.baidu.com
+Referer: https://news.baidu.com/
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-site
+Sec-Fetch-User: ?1
+Upgrade-Insecure-Requests: 1
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/141.0.0.0 Safari/537.36 SLBrowser/9.0.8.5161 SLBChan/111 SLBVPV/64-bit
+sec-ch-ua: "Chromium";v="9", "Not?A_Brand";v="8"
+sec-ch-ua-mobile: ?0
+sec-ch-ua-platform: "Windows"
+```
+根据以上采集源，你需要开发一套可动态接收参数的功能模块，以提供后续批量采集功能时调用。
+-- 瞭望采集：开发一个类似搜索引擎的界面，输入框下方提供采集源的动态选择功能（开关样式），该界面要求独立设计风格，不与 layui 风格同步，炫酷，好看，用户交互体验简单，另外在采集源的选择面板下，提供参数配置：一次有效采集数量和页数（与 URL 中的参数同步）
+-- 瞭望采集到的数据，保存到 sqlite 数据库表中
+- 数据仓库：以列表显示通过瞭望采集到的数据，一页 20 条分页，功能：
+-- 删除 / 批量删除
+-- AI 深度采集（后续单独任务完成）
+
+
+任务五-1：
+完善数据仓库模块中的功能：
+1、AI深度采集：通过技术手段对采集到的数据源进行深度解析，并获得详细的内容，并将详细内容保存到数据详细表中，同时与源数据进行关联。
+2、AI深度采集支持单条或多条数据采集，AI深度采集过程中需要有过程提示，要有采集日志提示，对结果有简单的统计分析。
+3、AI深度采集技术栈为：通过模型引擎中的默认大模型服务+crawl4ai来共同完成。
+4、AI深度采集完成后，需要在数据仓库列表中标注深度采集状态
+
+开发限制：
+- 遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+
+任务五 - 2：
+完善数据仓库模块中的功能：
+1、深度采集完成后，只有状态，没有查看采集后详细数据的入口或功能
+
+开发限制：
+- 遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+
+
+任务六：
+继续后端 - 管理侧功能模块的开发:
+接口管理：完成一个可以新增 / 修改 / 删除 / 分页的接口 URL 管理模块，该模块支持将互联网上搜集到的 API 放置于此模块集中管理，并对系统其他模块提供 API 接口服务。
+以下为部分接口示例:
+```
+接口地址: https://api.52vmy.cn/api/music/wy/rand
+返回格式: JSON
+请求方式: GET
+请求示例: https://api.52vmy.cn/api/music/wy/rand
+默认QPS: 每2秒最多4次 携带Token可无限制
+
+接口地址: https://api.52vmy.cn/api/query/tian
+返回格式: JSON
+请求方式: GET
+请求示例: https://api.52vmy.cn/api/query/tian?city=北京市
+默认QPS: 每2秒最多4次 携带Token可无限制
+接口备注: 点击前往三日天气API
+```
+接口响应数据示例:
+```
+{
+  "code": 200,
+  "msg": "成功",
+  "data": {
+    "song": "悬溺",
+    "singer": "葛东琪",
+    "cover": "http://p1.music.126.net/CDhYcShQKH2VAMENuCxWWQ==/109951164166513349.jpg",
+    "Music": "http://music.163.com/song/media/outer/url?id=1397345903",
+    "id": 1397345903
+  }
+}
+```
+开发限制：
+-遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+
+
+任务六-1：
+将以下数据新增到数据库接口管理对应的表中：
+
+接口地址： https://api.52vmy.cn/api/music/wy/rand
+返回格式： JSON
+请求方式： GET
+请求示例： https://api.52vmy.cn/api/music/wy/rand
+默认QPS： 每2秒最多4次 携带Token可无视限制
+
+接口地址： https://api.52vmy.cn/api/query/tian
+返回格式： JSON
+请求方式： GET
+请求示例： https://api.52vmy.cn/api/query/tian?city=北京市
+默认QPS： 每2秒最多4次 携带Token可无视限制
+接口备注： 点击前往三日天气API
+
+任务六-2：
+发现问题，检查代码，修复问题：
+1、刷新系统，已经手动设置接口管理到接口服务（顶级菜单）的功能会自行跑到系统管理菜单下，猜测有固定代码写死的行为。
+
+
+任务七：
+继续后端 - 管理侧功能模块的开发:
+数字员工：该模块是基于大模型服务 + 接口管理中的 API 服务完成一个综合业务管理功能，主要目的是实现用户侧可以通过@xxx调用后台数字员工中的相关服务，如：
+```
+@川小码：该数字员工主要是通过模型引擎中的默认模型 + 提示词（prompt）实现智能对话，模型根据提示词及用户的问题，响应（SSE）结果。“川小码” 是该数字员工的别名，该名称需要动态管理和可配置，后台配置后，前台同步用新的别名才能与该数字员工进行对话。
+@天气：该数字员工主要是通过接口管理中的 API 服务，提供天气响应数据，用户通过@天气 xxx 实现对话和请求，xxx =城市名称。
+@音乐：该数字员工主要是通过接口管理中的 API 服务，提供音乐响应数据，用户通过@天气，获得随机音乐卡片。
+......
+```
+在类别中，需要标明数字员工的分类（AI / 普通），需要有说明，需要兼容两类员工的参数及配置。
+开发限制:
+- 遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+- 功能实现后，需要将对应的数字员工川小码、天气、音乐一下新增到数据库表中
+
+
+任务八:
+继续前端 - 用户侧功能模块的开发：
+登录：利用后端 - 登录模块，实现前端用户登录，与管理用户共用一套鉴权逻辑，但是需要区分角色，前端只有普通用户角色（预留会员角色 [订阅模式]，本期不开发）
+注册：允许用户注册成为普通用户。
+问数：设计并实现类似豆包 /chatgpt 风格的能够与 AI 对话的界面，左侧为任务历史记录，右侧为对话工作区。
+-- 核心业务功能是：通过调用后台模型引擎中的默认模型实现与 AI 对话功能，默认 AI 对话需要意图识别哪些是普通问题，哪些是需要通过与 sqlite 对话的问题（智能问数的核心是指通过 AI 大模型与数据库中的通过采集和深度采集的数据进行对话，如：最新一条数据是什么？答：（此时应该到数据库中通过 SQL 技术实现数据检索并响应结果），原理是 AI 大模型通过类似 callfunction 等方式实现功能）
+-- 通过@xxx 实现与后台数字员工对话的功能。
+-- 响应数据采用流式响应，采用 markdown 渲染数据响应结果
+-- 界面中左侧需要实现模型服务切换（对应后台模型引擎中的模型服务）
+-- 界面中左侧需要记录历史对话的任务，点击可以查看和回放历史对话数据
+-- 界面中右侧需要采用 chatgpt / 豆包的对话风格，对话输入框需要支持普通输入 +@数字员工输入。
+
+开发限制:
+- 遵循前置任务开发成果及要求完成功能模块的实现，保证开发的一致性。
+- 界面风格需要参考后台瞭望采集页的风格实现，但是需要满足用户交互体验和效果，并适配H5+PC响应模式。
+
+

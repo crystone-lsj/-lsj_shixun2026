@@ -1,0 +1,203 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>角色管理</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+</head>
+<body>
+    <div style="padding: 16px;">
+        <div class="layui-card">
+            <div class="layui-card-header">
+                <i class="layui-icon layui-icon-group"></i> 角色管理
+            </div>
+            <div class="layui-card-body">
+                <div style="margin-bottom: 12px;">
+                    <div class="layui-inline">
+                        <input type="text" id="searchKeyword" placeholder="角色名称/标识" class="layui-input" style="width: 150px; display: inline-block;">
+                    </div>
+                    <div class="layui-inline">
+                        <select id="searchStatus" style="width: 120px;">
+                            <option value="">全部状态</option>
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                    <button class="layui-btn layui-btn-sm" id="btnSearch"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnAdd"><i class="layui-icon layui-icon-addition"></i> 新增角色</button>
+                </div>
+                <table id="roleTable" lay-filter="roleTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="statusTpl">
+        {{!# if(d.status === 1){ }}
+            <span class="layui-badge layui-bg-green">启用</span>
+        {{!# } else { }}
+            <span class="layui-badge layui-bg-gray">禁用</span>
+        {{!# } }}
+    </script>
+    <script type="text/html" id="toolbar">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i> 编辑</a>
+            <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="perm"><i class="layui-icon layui-icon-auz"></i> 权限</a>
+            {{!# if(!d.is_system){ }}
+                <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del"><i class="layui-icon layui-icon-delete"></i> 删除</a>
+            {{!# } }}
+        </div>
+    </script>
+    <style>
+    .layui-table-cell { height: auto !important; line-height: normal !important; }
+    .layui-table-body td[data-field="operate"] .layui-table-cell { display: flex; align-items: center; justify-content: center; }
+    </style>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['table', 'layer', 'form', 'jquery'], function() {
+        var table = layui.table;
+        var layer = layui.layer;
+        var form = layui.form;
+        var $ = layui.jquery;
+
+        table.render({
+            elem: '#roleTable',
+            url: '/admin/api/role/list',
+            page: true,
+            limit: 20,
+            request: { pageName: 'page', limitName: 'limit' },
+            cols: [[
+                { type: 'numbers', title: '序号', width: 60 },
+                { field: 'name', title: '角色名称', width: 150 },
+                { field: 'code', title: '角色标识', width: 150 },
+                { field: 'status', title: '状态', width: 80, templet: '#statusTpl' },
+                { field: 'created_at', title: '创建时间', width: 170 },
+                { field: 'description', title: '备注', minWidth: 200 },
+                { fixed: 'right', title: '操作', width: 200, toolbar: '#toolbar', align: 'center' }
+            ]],
+            done: function() {
+                $('.layui-table-body td[data-field="operate"] .layui-table-cell').each(function() {
+                    $(this).css({ 'display': 'flex', 'align-items': 'center', 'justify-content': 'center' });
+                });
+            }
+        });
+
+        $('#btnSearch').on('click', function() {
+            table.reload('roleTable', {
+                where: { keyword: $('#searchKeyword').val(), status: $('#searchStatus').val() },
+                page: { curr: 1 }
+            });
+        });
+
+        function openRoleForm(id, data) {
+            var html = '<form class="layui-form" style="padding:20px;">' +
+                '<input type="hidden" name="id" value="' + (id || '') + '">' +
+                '<div class="layui-form-item"><label class="layui-form-label">角色名称</label><div class="layui-input-block"><input type="text" name="name" value="' + (data && data.name || '') + '" required class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">角色标识</label><div class="layui-input-block"><input type="text" name="code" value="' + (data && data.code || '') + '" required class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">备注</label><div class="layui-input-block"><textarea name="description" class="layui-textarea" rows="2">' + (data && data.description || '') + '</textarea></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">状态</label><div class="layui-input-block"><input type="checkbox" name="status" lay-skin="switch" lay-text="启用|禁用" ' + (data && data.status !== 0 ? 'checked' : '') + '></div></div>' +
+                '<div class="layui-form-item"><div class="layui-input-block"><button class="layui-btn" lay-submit lay-filter="saveRole">保存</button> <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button></div></div>' +
+                '</form>';
+            layer.open({
+                type: 1, title: id ? '编辑角色' : '新增角色', area: ['450px', '340px'],
+                content: html,
+                success: function(layero) {
+                    form.render();
+                    form.on('submit(saveRole)', function(data2) {
+                        var fd = data2.field;
+                        fd.status = fd.status === 'on' ? 1 : 0;
+                        var url = id ? '/admin/api/role/update' : '/admin/api/role/add';
+                        $.post(url, fd, function(res) {
+                            if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); layer.closeAll(); table.reload('roleTable'); }
+                            else layer.msg(res.msg, { icon: 2 });
+                        }, 'json');
+                        return false;
+                    });
+                    $('#cancelBtn').on('click', function() { layer.closeAll(); });
+                }
+            });
+        }
+
+        $('#btnAdd').on('click', function() { openRoleForm(); });
+
+        function renderPermTree(roleId) {
+            $.get('/admin/api/role/permissions', function(res) {
+                var treeData = res.data || [];
+                var checkedIds = [];
+                if (roleId) {
+                    $.get('/admin/api/role/roleperms?role_id=' + roleId, function(pr) {
+                        checkedIds = pr.data || [];
+                        showPermDialog(roleId, treeData, checkedIds);
+                    });
+                } else {
+                    showPermDialog(0, treeData, []);
+                }
+            });
+        }
+
+        function showPermDialog(roleId, treeData, checkedIds) {
+            function renderNode(nodes, depth) {
+                var html = '';
+                nodes.forEach(function(n) {
+                    var indent = depth * 24;
+                    var isParent = n.children && n.children.length;
+                    var checked = checkedIds.indexOf('mod_' + n.id) > -1 ? 'checked' : '';
+                    var prefix = depth > 0 ? '├─ ' : '';
+                    html += '<div style="padding: 4px 0; margin-left: ' + indent + 'px;">' +
+                        '<input type="checkbox" name="perm_ids" value="mod_' + n.id + '" title="' + prefix + n.name + '" ' + checked + ' lay-skin="primary">' +
+                        '</div>';
+                    if (isParent) {
+                        html += renderNode(n.children, depth + 1);
+                    }
+                });
+                return html;
+            }
+
+            var html = '<form class="layui-form" style="padding:20px;">' +
+                '<div style="margin-bottom: 12px; font-weight: 500;"><i class="layui-icon layui-icon-auz"></i> 功能权限分配</div>' +
+                '<div style="max-height: 300px; overflow-y: auto; border: 1px solid #eee; padding: 10px; border-radius: 4px;">' +
+                renderNode(treeData, 0) +
+                '</div>' +
+                '<div style="margin-top: 12px; text-align: right;"><button class="layui-btn layui-btn-sm" lay-submit lay-filter="savePerms">保存权限</button> <button type="button" class="layui-btn layui-btn-sm layui-btn-primary" id="cancelPermBtn">取消</button></div>' +
+                '</form>';
+            layer.open({
+                type: 1, title: '分配权限', area: ['420px', '460px'],
+                content: html,
+                success: function(layero) {
+                    form.render();
+                    form.on('submit(savePerms)', function(data2) {
+                        var permIds = [];
+                        layero.find('input[name="perm_ids"]:checked').each(function() {
+                            permIds.push(this.value);
+                        });
+                        var postData = permIds.map(function(v) { return 'permission_ids=' + v; }).join('&');
+                        $.post('/admin/api/role/update?id=' + roleId, postData, function(res) {
+                            if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); layer.closeAll(); table.reload('roleTable'); }
+                            else layer.msg(res.msg, { icon: 2 });
+                        }, 'json');
+                        return false;
+                    });
+                    $('#cancelPermBtn').on('click', function() { layer.closeAll(); });
+                }
+            });
+        }
+
+        table.on('tool(roleTable)', function(obj) {
+            var d = obj.data;
+            if (obj.event === 'edit') openRoleForm(d.id, d);
+            else if (obj.event === 'perm') renderPermTree(d.id);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除该角色？', { icon: 3 }, function(idx) {
+                    $.post('/admin/api/role/delete', { id: d.id }, function(res) {
+                        if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); table.reload('roleTable'); }
+                        else layer.msg(res.msg, { icon: 2 });
+                    }, 'json');
+                    layer.close(idx);
+                });
+            }
+        });
+    });
+    </script>
+</body>
+</html>

@@ -1,0 +1,157 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数字员工</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+</head>
+<body>
+    <div style="padding: 16px;">
+        <div class="layui-card">
+            <div class="layui-card-header">
+                <i class="fas fa-user-tie"></i> 数字员工
+                <span style="float: right; color: #999; font-size: 12px;">管理AI与普通数字员工，支持别名动态配置</span>
+            </div>
+            <div class="layui-card-body">
+                <div style="margin-bottom: 12px;">
+                    <div class="layui-inline">
+                        <input type="text" id="searchKeyword" placeholder="搜索名称/别名" class="layui-input" style="width: 160px; display: inline-block;">
+                    </div>
+                    <div class="layui-inline">
+                        <select id="searchCategory" style="width: 120px;">
+                            <option value="">全部分类</option>
+                            <option value="ai">AI 员工</option>
+                            <option value="normal">普通员工</option>
+                        </select>
+                    </div>
+                    <div class="layui-inline">
+                        <select id="searchStatus" style="width: 100px;">
+                            <option value="">全部状态</option>
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                    <button class="layui-btn layui-btn-sm" id="btnSearch"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnAdd"><i class="layui-icon layui-icon-addition"></i> 新增员工</button>
+                </div>
+                <table id="empTable" lay-filter="empTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="categoryTpl">
+        {{!# if(d.category === 'ai'){ }}
+            <span class="layui-badge layui-bg-purple" style="background:linear-gradient(135deg,#6366f1,#8b5cf6);">AI 员工</span>
+        {{!# } else { }}
+            <span class="layui-badge layui-bg-blue">普通员工</span>
+        {{!# } }}
+    </script>
+    <script type="text/html" id="statusTpl">
+        {{!# if(d.status === 1){ }}
+            <span class="layui-badge layui-bg-green">启用</span>
+        {{!# } else { }}
+            <span class="layui-badge layui-bg-gray">禁用</span>
+        {{!# } }}
+    </script>
+    <script type="text/html" id="toolbar">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i> 编辑</a>
+        <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del"><i class="layui-icon layui-icon-delete"></i> 删除</a>
+    </script>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['table', 'layer', 'form', 'jquery'], function() {
+        var table = layui.table;
+        var layer = layui.layer;
+        var form = layui.form;
+        var $ = layui.jquery;
+
+        table.render({
+            elem: '#empTable',
+            url: '/admin/api/digital-employee/list',
+            page: true,
+            limit: 20,
+            request: { pageName: 'page', limitName: 'limit' },
+            cols: [[
+                { type: 'numbers', title: '序号', width: 60 },
+                { field: 'name', title: '名称', width: 120 },
+                { field: 'alias', title: '别名(@)', width: 100, templet: function(d){ return '@' + d.alias; }},
+                { field: 'category', title: '分类', width: 100, templet: '#categoryTpl' },
+                { field: 'description', title: '说明', minWidth: 200 },
+                { field: 'status', title: '状态', width: 80, templet: '#statusTpl' },
+                { field: 'created_at', title: '创建时间', width: 170 },
+                { fixed: 'right', title: '操作', width: 160, toolbar: '#toolbar', align: 'center' }
+            ]]
+        });
+
+        $('#btnSearch').on('click', function() {
+            table.reload('empTable', {
+                where: { keyword: $('#searchKeyword').val(), category: $('#searchCategory').val(), status: $('#searchStatus').val() },
+                page: { curr: 1 }
+            });
+        });
+
+        function openEmpForm(id, data) {
+            var html = '<form class="layui-form" style="padding:20px;">' +
+                '<input type="hidden" name="id" value="' + (id || '') + '">' +
+                '<div class="layui-form-item"><label class="layui-form-label">名称</label><div class="layui-input-block"><input type="text" name="name" value="' + (data && data.name || '') + '" required class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">别名</label><div class="layui-input-block"><input type="text" name="alias" value="' + (data && data.alias || '') + '" required placeholder="用户通过@别名调用" class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">分类</label><div class="layui-input-block"><select name="category"><option value="ai" ' + (data && data.category === 'ai' ? 'selected' : '') + '>AI 员工</option><option value="normal" ' + (data && data.category !== 'ai' ? 'selected' : '') + '>普通员工</option></select></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">说明</label><div class="layui-input-block"><textarea name="description" class="layui-textarea" rows="2">' + (data && data.description || '') + '</textarea></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">提示词</label><div class="layui-input-block"><textarea name="prompt" class="layui-textarea" rows="3" placeholder="AI员工专属提示词">' + (data && data.prompt || '') + '</textarea></div></div>' +
+                '<div class="layui-form-item">' +
+                '<div class="layui-inline"><label class="layui-form-label">图标</label><div class="layui-input-inline"><input type="text" name="icon" value="' + (data && data.icon || 'fas fa-user-tie') + '" class="layui-input"></div></div>' +
+                '<div class="layui-inline"><label class="layui-form-label">颜色</label><div class="layui-input-inline"><input type="color" name="color" value="' + (data && data.color || '#6366f1') + '" class="layui-input" style="height:38px;"></div></div>' +
+                '</div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">API服务</label><div class="layui-input-block"><select name="api_id"><option value="">无（仅提示词）</option></select></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">配置</label><div class="layui-input-block"><textarea name="config" class="layui-textarea" rows="2" placeholder="JSON格式配置">' + (data && data.config || '{}') + '</textarea></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">状态</label><div class="layui-input-block"><input type="checkbox" name="status" lay-skin="switch" lay-text="启用|禁用" ' + (data && data.status !== 0 ? 'checked' : '') + '></div></div>' +
+                '<div class="layui-form-item"><div class="layui-input-block"><button class="layui-btn" lay-submit lay-filter="saveEmp">保存</button> <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button></div></div>' +
+                '</form>';
+            layer.open({
+                type: 1, title: id ? '编辑数字员工' : '新增数字员工', area: ['520px', '520px'],
+                content: html,
+                success: function(layero) {
+                    form.render();
+                    var sel = layero.find('select[name="api_id"]');
+                    $.get('/admin/api/manage/list?limit=100', function(res){
+                        (res.data||[]).forEach(function(a){
+                            sel.append('<option value="'+a.id+'" '+(data&&data.api_id==a.id?'selected':'')+'>'+a.name+'</option>');
+                        });
+                        form.render('select');
+                    });
+                    form.on('submit(saveEmp)', function(data2) {
+                        var fd = data2.field;
+                        fd.status = fd.status === 'on' ? 1 : 0;
+                        var url = id ? '/admin/api/digital-employee/update' : '/admin/api/digital-employee/add';
+                        $.post(url, fd, function(res) {
+                            if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); layer.closeAll(); table.reload('empTable'); }
+                            else layer.msg(res.msg, { icon: 2 });
+                        }, 'json');
+                        return false;
+                    });
+                    $('#cancelBtn').on('click', function() { layer.closeAll(); });
+                }
+            });
+        }
+
+        $('#btnAdd').on('click', function() { openEmpForm(); });
+
+        table.on('tool(empTable)', function(obj) {
+            var d = obj.data;
+            if (obj.event === 'edit') openEmpForm(d.id, d);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除该数字员工？', { icon: 3 }, function(idx) {
+                    $.post('/admin/api/digital-employee/delete', { id: d.id }, function(res) {
+                        if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); table.reload('empTable'); }
+                        else layer.msg(res.msg, { icon: 2 });
+                    }, 'json');
+                    layer.close(idx);
+                });
+            }
+        });
+    });
+    </script>
+</body>
+</html>

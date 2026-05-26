@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>数据仓库</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+    <link rel="stylesheet" href="/static/dist/fontawesome-free-5.15.4-web/fontawesome-free-5.15.4-web/css/all.min.css">
+</head>
+<body>
+    <div style="padding: 12px 16px; background: #fff; border-bottom: 1px solid #eee;">
+        <button class="layui-btn layui-btn-sm layui-btn-danger" id="btnBatchDelete" disabled>
+            <i class="layui-icon layui-icon-delete"></i> 批量删除
+        </button>
+        <div class="layui-inline" style="float: right;">
+            <input type="text" id="keyword" placeholder="搜索标题/来源" class="layui-input layui-input-sm" style="width: 200px; display: inline-block;">
+            <button class="layui-btn layui-btn-sm" id="btnSearch"><i class="layui-icon layui-icon-search"></i></button>
+        </div>
+    </div>
+
+    <div style="padding: 16px; background: #fff; margin: 16px; border-radius: 4px;">
+        <table id="dataTable" lay-filter="dataTable"></table>
+    </div>
+
+    <script type="text/html" id="dataToolbar">
+        <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del"><i class="layui-icon layui-icon-delete"></i> 删除</a>
+        <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="deep"><i class="fas fa-magic"></i> AI 深度采集</a>
+    </script>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['table', 'layer', 'jquery'], function() {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        table.render({
+            elem: '#dataTable',
+            url: '/admin/api/lookout/data/list',
+            page: true,
+            limit: 20,
+            limits: [10, 20, 50],
+            cols: [[
+                { type: 'checkbox', fixed: 'left' },
+                { type: 'numbers', title: '序号', width: 60 },
+                { field: 'title', title: '标题', width: 250 },
+                { field: 'summary', title: '摘要', minWidth: 200 },
+                { field: 'source_name', title: '采集源', width: 120 },
+                { field: 'publish_time', title: '发布时间', width: 160 },
+                { field: 'collected_at', title: '采集时间', width: 160 },
+                { fixed: 'right', title: '操作', width: 180, toolbar: '#dataToolbar', align: 'center' }
+            ]],
+            parseData: function(res) {
+                return {
+                    "code": res.code === 0 ? 0 : 1,
+                    "msg": "",
+                    "count": res.data.total,
+                    "data": res.data.data
+                };
+            },
+            request: { pageName: 'page', limitName: 'limit' }
+        });
+
+        table.on('checkbox(dataTable)', function(obj) {
+            var checkStatus = table.checkStatus('dataTable');
+            $('#btnBatchDelete').prop('disabled', checkStatus.data.length === 0);
+        });
+
+        function reloadTable() {
+            table.reload('dataTable', {
+                where: { keyword: $('#keyword').val() },
+                page: { curr: 1 }
+            });
+        }
+
+        $('#btnSearch').on('click', reloadTable);
+        $('#keyword').on('keydown', function(e) { if (e.keyCode === 13) reloadTable(); });
+
+        $('#btnBatchDelete').on('click', function() {
+            var checkStatus = table.checkStatus('dataTable');
+            if (checkStatus.data.length === 0) return;
+            var ids = checkStatus.data.map(function(item) { return item.id; });
+            layer.confirm('确认删除选中的 ' + ids.length + ' 条数据？', { icon: 3 }, function(idx) {
+                $.ajax({
+                    url: '/admin/api/lookout/data/delete',
+                    type: 'POST',
+                    contentType: 'application/json',
+                    data: JSON.stringify({ ids: ids }),
+                    success: function(res) {
+                        if (res.code === 0) {
+                            layer.msg(res.msg, { icon: 1 });
+                            reloadTable();
+                        } else {
+                            layer.msg(res.msg, { icon: 2 });
+                        }
+                    }
+                });
+                layer.close(idx);
+            });
+        });
+
+        table.on('tool(dataTable)', function(obj) {
+            if (obj.event === 'del') {
+                layer.confirm('确认删除该数据？', { icon: 3 }, function(idx) {
+                    $.post('/admin/api/lookout/data/delete', JSON.stringify({ ids: [obj.data.id] }), function(res) {
+                        if (res.code === 0) {
+                            layer.msg(res.msg, { icon: 1 });
+                            reloadTable();
+                        } else {
+                            layer.msg(res.msg, { icon: 2 });
+                        }
+                    }, 'json');
+                    layer.close(idx);
+                });
+            } else if (obj.event === 'deep') {
+                layer.msg('AI 深度采集功能将在后续任务中完成', { icon: 0 });
+            }
+        });
+    });
+    </script>
+</body>
+</html>

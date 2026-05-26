@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瞭源管理</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+    <link rel="stylesheet" href="/static/dist/fontawesome-free-5.15.4-web/fontawesome-free-5.15.4-web/css/all.min.css">
+</head>
+<body>
+    <div style="padding: 12px 16px;">
+        <div style="margin-bottom: 12px;">
+            <button class="layui-btn layui-btn-sm" id="btnAdd"><i class="layui-icon layui-icon-addition"></i> 新增采集源</button>
+        </div>
+        <table id="sourceTable" lay-filter="sourceTable"></table>
+    </div>
+
+    <script type="text/html" id="sourceToolbar">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i> 编辑</a>
+        <a class="layui-btn layui-btn-danger layui-btn-xs" lay-event="del"><i class="layui-icon layui-icon-delete"></i> 删除</a>
+    </script>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['table', 'layer', 'form', 'jquery'], function() {
+        var table = layui.table;
+        var layer = layui.layer;
+        var $ = layui.jquery;
+
+        table.render({
+            elem: '#sourceTable',
+            url: '/admin/api/lookout/source/list',
+            cols: [[
+                { type: 'numbers', title: '序号', width: 60 },
+                { field: 'name', title: '采集源名称', width: 150 },
+                { field: 'url_template', title: 'URL模板', width: 300, templet: function(d) {
+                    return '<code style="font-size:11px;">' + d.url_template.substring(0, 60) + '...</code>';
+                }},
+                { field: 'param_fields', title: '参数配置', width: 150, templet: function(d) {
+                    return d.param_fields && d.param_fields.length ? d.param_fields.map(function(p){return p.label;}).join(', ') : '无';
+                }},
+                { field: 'enabled', title: '状态', width: 80, templet: function(d) {
+                    return d.enabled ? '<span class="layui-badge layui-bg-green">启用</span>' : '<span class="layui-badge layui-bg-gray">禁用</span>';
+                }},
+                { field: 'created_at', title: '创建时间', width: 180 },
+                { fixed: 'right', title: '操作', width: 160, toolbar: '#sourceToolbar', align: 'center' }
+            ]],
+            page: false
+        });
+
+        function openSourceForm(id, d) {
+            layer.open({
+                type: 1, title: id ? '编辑采集源' : '新增采集源', area: ['680px', '560px'],
+                content: '<div style="padding: 20px;"><form class="layui-form" lay-filter="srcForm">' +
+                    '<input type="hidden" name="id" value="' + (d && d.id || id || '') + '">' +
+                    '<div class="layui-form-item"><label class="layui-form-label">名称</label><div class="layui-input-block"><input type="text" name="name" value="' + (d && d.name || '') + '" required class="layui-input"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">URL模板</label><div class="layui-input-block"><input type="text" name="url_template" value="' + (d && d.url_template || '') + '" required placeholder="使用 {关键字} {pn} 等占位符" class="layui-input"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">Headers</label><div class="layui-input-block"><textarea name="headers" class="layui-textarea" rows="3" placeholder="JSON格式">{}</textarea></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">参数字段</label><div class="layui-input-block"><textarea name="param_fields" class="layui-textarea" rows="3" placeholder="JSON数组">[]</textarea></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">标题选择器</label><div class="layui-input-block"><input type="text" name="selector_title" value="' + (d && d.selector_title || '') + '" class="layui-input" placeholder="CSS选择器"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">内容选择器</label><div class="layui-input-block"><input type="text" name="selector_content" value="' + (d && d.selector_content || '') + '" class="layui-input"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">时间选择器</label><div class="layui-input-block"><input type="text" name="selector_time" value="' + (d && d.selector_time || '') + '" class="layui-input"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label">来源选择器</label><div class="layui-input-block"><input type="text" name="selector_source" value="' + (d && d.selector_source || '') + '" class="layui-input"></div></div>' +
+                    '<div style="text-align: right;"><button class="layui-btn" lay-submit lay-filter="saveSource">保存</button> <button type="button" class="layui-btn layui-btn-primary" id="cancelSrc">取消</button></div>' +
+                    '</form></div>',
+                success: function(layero) {
+                    layui.form.render();
+                    if (d) {
+                        layero.find('textarea[name="headers"]').val(JSON.stringify(d.headers || {}, null, 2));
+                        layero.find('textarea[name="param_fields"]').val(JSON.stringify(d.param_fields || [], null, 2));
+                    }
+                    layui.form.on('submit(saveSource)', function(data2) {
+                        var url = id ? '/admin/api/lookout/source/update' : '/admin/api/lookout/source/add';
+                        $.post(url, data2.field, function(res) {
+                            if (res.code === 0) {
+                                layer.msg(res.msg, { icon: 1 });
+                                layer.closeAll();
+                                table.reload('sourceTable');
+                            } else {
+                                layer.msg(res.msg, { icon: 2 });
+                            }
+                        }, 'json');
+                        return false;
+                    });
+                    $('#cancelSrc').on('click', function() { layer.closeAll(); });
+                }
+            });
+        }
+
+        $('#btnAdd').on('click', function() { openSourceForm(0); });
+
+        table.on('tool(sourceTable)', function(obj) {
+            var d = obj.data;
+            if (obj.event === 'edit') openSourceForm(d.id, d);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除该采集源？', { icon: 3 }, function(idx) {
+                    $.post('/admin/api/lookout/source/delete', { id: d.id }, function(res) {
+                        if (res.code === 0) {
+                            layer.msg(res.msg, { icon: 1 });
+                            table.reload('sourceTable');
+                        } else {
+                            layer.msg(res.msg, { icon: 2 });
+                        }
+                    }, 'json');
+                    layer.close(idx);
+                });
+            }
+        });
+    });
+    </script>
+</body>
+</html>

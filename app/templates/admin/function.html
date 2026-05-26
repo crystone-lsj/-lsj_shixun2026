@@ -1,0 +1,150 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>功能管理</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+</head>
+<body>
+    <div style="padding: 16px;">
+        <div class="layui-card">
+            <div class="layui-card-header">
+                <i class="layui-icon layui-icon-component"></i> 功能管理
+                <span style="float: right; color: #999; font-size: 12px;">管理系统功能菜单树形结构</span>
+            </div>
+            <div class="layui-card-body">
+                <div style="margin-bottom: 12px;">
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnAdd"><i class="layui-icon layui-icon-addition"></i> 新增节点</button>
+                    <button class="layui-btn layui-btn-sm" id="btnRefresh"><i class="layui-icon layui-icon-refresh"></i> 刷新</button>
+                </div>
+                <table id="funcTable" lay-filter="funcTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="toolbar">
+        <div style="display: flex; align-items: center; justify-content: center; gap: 6px;">
+            <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i> 编辑</a>
+            <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="addchild"><i class="layui-icon layui-icon-addition"></i> 添加子节点</a>
+            <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del"><i class="layui-icon layui-icon-delete"></i> 删除</a>
+        </div>
+    </script>
+    <style>
+    .layui-table-cell { height: auto !important; line-height: normal !important; }
+    </style>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['table', 'layer', 'form', 'jquery', 'tree'], function() {
+        var table = layui.table;
+        var layer = layui.layer;
+        var form = layui.form;
+        var $ = layui.jquery;
+        var parentOptions = [];
+
+        function loadParents() {
+            $.get('/admin/api/function/parents', function(res) {
+                parentOptions = res.data || [];
+            });
+        }
+
+        function renderTable() {
+            $.get('/admin/api/function/list', function(res) {
+                var data = res.data || [];
+                var flat = [];
+                function flatten(nodes, depth) {
+                    nodes.forEach(function(n) {
+                        n._depth = depth;
+                        flat.push(n);
+                        if (n.children && n.children.length) {
+                            flatten(n.children, depth + 1);
+                        }
+                    });
+                }
+                flatten(data, 0);
+
+                table.render({
+                    elem: '#funcTable',
+                    data: flat,
+                    page: false,
+                    cols: [[
+                        { field: 'name', title: '功能名称', minWidth: 200, templet: function(d) {
+                            var indent = '';
+                            for (var i = 0; i < (d._depth || 0); i++) indent += '&nbsp;&nbsp;&nbsp;&nbsp;';
+                            var icon = d.children && d.children.length ? '<i class="layui-icon layui-icon-triangle-d"></i> ' : '<i class="layui-icon layui-icon-file" style="color:#ccc;"></i> ';
+                            return indent + icon + d.name;
+                        }},
+                        { field: 'code', title: '功能标识', width: 150 },
+                        { field: 'path', title: '访问路径', width: 200 },
+                        { field: 'sort_order', title: '排序', width: 80 },
+                        { fixed: 'right', title: '操作', width: 240, toolbar: '#toolbar', align: 'center' }
+                    ]]
+                });
+            });
+        }
+
+        loadParents();
+        renderTable();
+
+        $('#btnRefresh').on('click', function() { loadParents(); renderTable(); });
+
+        function openFuncForm(id, data, parentPid) {
+            var html = '<form class="layui-form" style="padding:20px;">' +
+                '<input type="hidden" name="id" value="' + (id || '') + '">' +
+                '<div class="layui-form-item"><label class="layui-form-label">功能名称</label><div class="layui-input-block"><input type="text" name="name" value="' + (data && data.name || '') + '" required class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">功能标识</label><div class="layui-input-block"><input type="text" name="code" value="' + (data && data.code || '') + '" required class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">父级节点</label><div class="layui-input-block"><select name="parent_id">';
+            parentOptions.forEach(function(p) {
+                var selected = '';
+                if (parentPid !== undefined && parentPid !== null) {
+                    if (p.id === parentPid) selected = 'selected';
+                } else if (data && p.id === data.parent_id) {
+                    selected = 'selected';
+                }
+                html += '<option value="' + p.id + '" ' + selected + '>' + p.name + '</option>';
+            });
+            html += '</select></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">访问路径</label><div class="layui-input-block"><input type="text" name="path" value="' + (data && data.path || '') + '" class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><label class="layui-form-label">排序号</label><div class="layui-input-block"><input type="number" name="sort_order" value="' + (data && data.sort_order || 0) + '" class="layui-input"></div></div>' +
+                '<div class="layui-form-item"><div class="layui-input-block"><button class="layui-btn" lay-submit lay-filter="saveFunc">保存</button> <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button></div></div>' +
+                '</form>';
+            layer.open({
+                type: 1, title: id ? '编辑功能节点' : '新增功能节点', area: ['480px', '380px'],
+                content: html,
+                success: function(layero) {
+                    form.render();
+                    form.on('submit(saveFunc)', function(data2) {
+                        var fd = data2.field;
+                        var url = id ? '/admin/api/function/update' : '/admin/api/function/add';
+                        $.post(url, fd, function(res) {
+                            if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); layer.closeAll(); loadParents(); renderTable(); }
+                            else layer.msg(res.msg, { icon: 2 });
+                        }, 'json');
+                        return false;
+                    });
+                    $('#cancelBtn').on('click', function() { layer.closeAll(); });
+                }
+            });
+        }
+
+        $('#btnAdd').on('click', function() { openFuncForm(); });
+
+        table.on('tool(funcTable)', function(obj) {
+            var d = obj.data;
+            if (obj.event === 'edit') openFuncForm(d.id, d);
+            else if (obj.event === 'addchild') openFuncForm(null, null, d.id);
+            else if (obj.event === 'del') {
+                layer.confirm('确认删除该功能节点？如有子节点将无法删除', { icon: 3 }, function(idx) {
+                    $.post('/admin/api/function/delete', { id: d.id }, function(res) {
+                        if (res.code === 0) { layer.msg(res.msg, { icon: 1 }); loadParents(); renderTable(); }
+                        else layer.msg(res.msg, { icon: 2 });
+                    }, 'json');
+                    layer.close(idx);
+                });
+            }
+        });
+    });
+    </script>
+</body>
+</html>

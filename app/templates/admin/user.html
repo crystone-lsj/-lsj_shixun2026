@@ -1,0 +1,211 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>用户管理</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+</head>
+<body>
+    <div style="padding: 16px;">
+        <div class="layui-card">
+            <div class="layui-card-header">
+                <i class="layui-icon layui-icon-username"></i> 用户管理
+            </div>
+            <div class="layui-card-body">
+                <div class="layui-form toolbar" style="margin-bottom: 12px;">
+                    <div class="layui-inline">
+                        <input type="text" id="searchKeyword" placeholder="用户名" class="layui-input" style="width: 150px; display: inline-block;">
+                    </div>
+                    <div class="layui-inline">
+                        <select id="searchStatus" style="width: 120px;">
+                            <option value="">全部状态</option>
+                            <option value="1">启用</option>
+                            <option value="0">禁用</option>
+                        </select>
+                    </div>
+                    <button class="layui-btn layui-btn-sm" id="btnSearch"><i class="layui-icon layui-icon-search"></i> 搜索</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-normal" id="btnAdd"><i class="layui-icon layui-icon-addition"></i> 新增用户</button>
+                    <button class="layui-btn layui-btn-sm layui-btn-danger" id="btnBatchDel" disabled><i class="layui-icon layui-icon-delete"></i> 批量删除</button>
+                </div>
+                <table id="userTable" lay-filter="userTable"></table>
+            </div>
+        </div>
+    </div>
+
+    <script type="text/html" id="statusTpl">
+        {{!# if(d.status === 1){ }}
+            <span class="layui-badge layui-bg-green">启用</span>
+        {{!# } else { }}
+            <span class="layui-badge layui-bg-gray">禁用</span>
+        {{!# } }}
+    </script>
+    <script type="text/html" id="toolbar">
+        <a class="layui-btn layui-btn-xs" lay-event="edit"><i class="layui-icon layui-icon-edit"></i> 编辑</a>
+        {{!# if(d.username !== 'admin'){ }}
+            {{!# if(d.status === 1){ }}
+                <a class="layui-btn layui-btn-xs layui-btn-warm" lay-event="toggle"><i class="layui-icon layui-icon-close"></i> 禁用</a>
+            {{!# } else { }}
+                <a class="layui-btn layui-btn-xs layui-btn-normal" lay-event="toggle"><i class="layui-icon layui-icon-ok"></i> 启用</a>
+            {{!# } }}
+        {{!# } }}
+        <a class="layui-btn layui-btn-xs layui-btn-danger" lay-event="del"><i class="layui-icon layui-icon-delete"></i> 删除</a>
+    </script>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['table', 'layer', 'form', 'jquery'], function() {
+        var table = layui.table;
+        var layer = layui.layer;
+        var form = layui.form;
+        var $ = layui.jquery;
+
+        table.render({
+            elem: '#userTable',
+            url: '/admin/api/user/list',
+            page: true,
+            limit: 20,
+            request: { pageName: 'page', limitName: 'limit' },
+            cols: [[
+                { type: 'checkbox' },
+                { type: 'numbers', title: '序号', width: 60 },
+                { field: 'username', title: '用户名', width: 120 },
+                { field: 'nickname', title: '昵称', width: 120 },
+                { field: 'email', title: '邮箱', width: 200 },
+                { field: 'roles', title: '角色', width: 150 },
+                { field: 'status', title: '状态', width: 80, templet: '#statusTpl' },
+                { field: 'last_login_at', title: '最后登录', width: 170 },
+                { field: 'create_at', title: '创建时间', width: 170 },
+                { fixed: 'right', title: '操作', width: 240, toolbar: '#toolbar', align: 'center' }
+            ]]
+        });
+
+        $('#btnSearch').on('click', function() {
+            table.reload('userTable', {
+                where: { keyword: $('#searchKeyword').val(), status: $('#searchStatus').val() },
+                page: { curr: 1 }
+            });
+        });
+
+        $('#btnBatchDel').on('click', function() {
+            var ids = table.checkStatus('userTable').data.map(function(d){return d.id;});
+            if(!ids.length) return;
+            layer.confirm('确认删除选中的 '+ids.length+' 个用户？', {icon: 3}, function(idx){
+                $.ajax({url:'/admin/api/user/delete', type:'POST', contentType:'application/json',
+                    data: JSON.stringify({ids: ids}), success: function(res){
+                        if(res.code===0){layer.msg(res.msg,{icon:1});table.reload('userTable');}
+                        else layer.msg(res.msg,{icon:2});
+                }});
+                layer.close(idx);
+            });
+        });
+
+        table.on('checkbox(userTable)', function(){
+            $('#btnBatchDel').prop('disabled', !table.checkStatus('userTable').data.length);
+        });
+
+        function openUserForm(id, data){
+            $.get('/admin/api/user/roles', function(res){
+                var roles = res.data || [];
+                var html = '<form class="layui-form" style="padding:20px;">'+
+                    '<input type="hidden" name="id" value="'+(id||'')+'">'+
+                    '<div class="layui-form-item"><label class="layui-form-label">用户名</label><div class="layui-input-block"><input type="text" name="username" value="'+(data&&data.username||'')+'" required class="layui-input"></div></div>'+
+                    '<div class="layui-form-item"><label class="layui-form-label">昵称</label><div class="layui-input-block"><input type="text" name="nickname" value="'+(data&&data.nickname||'')+'" class="layui-input"></div></div>'+
+                    '<div class="layui-form-item"><label class="layui-form-label">邮箱</label><div class="layui-input-block"><input type="text" name="email" value="'+(data&&data.email||'')+'" class="layui-input"></div></div>'+
+                    '<div class="layui-form-item"><label class="layui-form-label">密码</label><div class="layui-input-block"><input type="password" name="password" placeholder="'+(id?'留空则不修改':'必填')+'" class="layui-input"></div></div>'+
+                    '<div class="layui-form-item"><label class="layui-form-label">角色</label><div class="layui-input-block">';
+                roles.forEach(function(r){
+                    var checked = data && data.user_roles && data.user_roles.indexOf(r.id) > -1;
+                    html += '<input type="checkbox" name="role_ids" value="'+r.id+'" title="'+r.name+'" '+(checked?'checked':'')+' lay-skin="primary">';
+                });
+                html += '</div></div>'+
+                    '<div class="layui-form-item"><label class="layui-form-label">状态</label><div class="layui-input-block"><input type="checkbox" name="status" lay-skin="switch" lay-text="启用|禁用" '+(data&&data.status!==0?'checked':'')+'></div></div>'+
+                    '<div class="layui-form-item"><div class="layui-input-block"><button class="layui-btn" lay-submit lay-filter="saveUser">保存</button> <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button></div></div>'+
+                    '</form>';
+                layer.open({
+                    type: 1, title: id ? '编辑用户' : '新增用户', area: ['480px', '450px'],
+                    content: html,
+                    success: function(layero){
+                        form.render();
+                        form.on('submit(saveUser)', function(data2){
+                            var fd = data2.field;
+                            fd.status = fd.status === 'on' ? 1 : 0;
+                            var url = id ? '/admin/api/user/update' : '/admin/api/user/add';
+                            $.post(url, fd, function(res){
+                                if(res.code===0){layer.msg(res.msg,{icon:1});layer.closeAll();table.reload('userTable');}
+                                else layer.msg(res.msg,{icon:2});
+                            }, 'json');
+                            return false;
+                        });
+                        $('#cancelBtn').on('click', function(){layer.closeAll();});
+                    }
+                });
+            });
+        }
+
+        $('#btnAdd').on('click', function(){ openUserForm(); });
+
+        table.on('tool(userTable)', function(obj){
+            var d = obj.data;
+            if(obj.event === 'edit'){
+                $.get('/admin/api/user/roles', function(res){
+                    var allRoles = res.data || [];
+                    var html = '<form class="layui-form" style="padding:20px;">'+
+                        '<input type="hidden" name="id" value="'+d.id+'">'+
+                        '<div class="layui-form-item"><label class="layui-form-label">用户名</label><div class="layui-input-block"><input type="text" name="username" value="'+d.username+'" required class="layui-input"></div></div>'+
+                        '<div class="layui-form-item"><label class="layui-form-label">昵称</label><div class="layui-input-block"><input type="text" name="nickname" value="'+d.nickname+'" class="layui-input"></div></div>'+
+                        '<div class="layui-form-item"><label class="layui-form-label">邮箱</label><div class="layui-input-block"><input type="text" name="email" value="'+d.email+'" class="layui-input"></div></div>'+
+                        '<div class="layui-form-item"><label class="layui-form-label">密码</label><div class="layui-input-block"><input type="password" name="password" placeholder="留空则不修改" class="layui-input"></div></div>'+
+                        '<div class="layui-form-item"><label class="layui-form-label">角色</label><div class="layui-input-block">';
+                    allRoles.forEach(function(r){
+                        html += '<input type="checkbox" name="role_ids" value="'+r.id+'" title="'+r.name+'" lay-skin="primary">';
+                    });
+                    html += '</div></div>'+
+                        '<div class="layui-form-item"><label class="layui-form-label">状态</label><div class="layui-input-block"><input type="checkbox" name="status" lay-skin="switch" lay-text="启用|禁用" '+(d.status!==0?'checked':'')+'></div></div>'+
+                        '<div class="layui-form-item"><div class="layui-input-block"><button class="layui-btn" lay-submit lay-filter="saveUser">保存</button> <button type="button" class="layui-btn layui-btn-primary" id="cancelBtn">取消</button></div></div>'+
+                        '</form>';
+                    layer.open({
+                        type: 1, title: '编辑用户', area: ['480px', '420px'],
+                        content: html,
+                        success: function(layero){
+                            form.render();
+                            var roleIds = d.roles ? d.roles.split(', ') : [];
+                            allRoles.forEach(function(r){
+                                if(roleIds.indexOf(r.name) > -1){
+                                    layero.find('input[name="role_ids"][value="'+r.id+'"]').prop('checked', true);
+                                }
+                            });
+                            form.render('checkbox');
+                            form.on('submit(saveUser)', function(data2){
+                                var fd = data2.field;
+                                fd.status = fd.status === 'on' ? 1 : 0;
+                                $.post('/admin/api/user/update', fd, function(res){
+                                    if(res.code===0){layer.msg(res.msg,{icon:1});layer.closeAll();table.reload('userTable');}
+                                    else layer.msg(res.msg,{icon:2});
+                                }, 'json');
+                                return false;
+                            });
+                            $('#cancelBtn').on('click', function(){layer.closeAll();});
+                        }
+                    });
+                });
+            } else if(obj.event === 'del'){
+                layer.confirm('确认删除该用户？',{icon:3},function(idx){
+                    $.ajax({url:'/admin/api/user/delete',type:'POST',contentType:'application/json',
+                        data:JSON.stringify({ids:[d.id]}),success:function(res){
+                            if(res.code===0){layer.msg(res.msg,{icon:1});table.reload('userTable');}
+                            else layer.msg(res.msg,{icon:2});
+                    }});
+                    layer.close(idx);
+                });
+            } else if(obj.event === 'toggle'){
+                $.post('/admin/api/user/update', {id: d.id, username: d.username, nickname: d.nickname||'', email: d.email||'', status: d.status===1 ? 0 : 1}, function(res){
+                    if(res.code===0){layer.msg(res.msg,{icon:1});table.reload('userTable');}
+                    else layer.msg(res.msg,{icon:2});
+                }, 'json');
+            }
+        });
+    });
+    </script>
+</body>
+</html>

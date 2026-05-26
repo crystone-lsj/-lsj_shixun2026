@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="/static/dist/layui/css/layui.css">
+    <link rel="stylesheet" href="/static/dist/fontawesome-free-5.15.4-web/fontawesome-free-5.15.4-web/css/all.min.css">
+    <style>
+        .model-page { padding: 20px; background: #0a0e27; min-height: 100vh; }
+        .model-toolbar { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .model-toolbar h2 { color: #e0e6ed; font-size: 20px; margin: 0; }
+        .model-stats { display: flex; gap: 16px; margin-bottom: 24px; flex-wrap: wrap; }
+        .stat-card {
+            flex: 1; min-width: 160px; background: linear-gradient(135deg, #1a1f3a 0%, #0d1025 100%);
+            border: 1px solid rgba(100, 140, 255, 0.15); border-radius: 12px; padding: 16px;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+        }
+        .stat-card .label { color: #8892b0; font-size: 13px; margin-bottom: 6px; }
+        .stat-card .value { color: #64f4ac; font-size: 26px; font-weight: 700; }
+        .stat-card .value.warn { color: #ffd700; }
+        .stat-card .value.danger { color: #ff6b81; }
+        .stat-card .value.primary { color: #64b5f6; }
+        .model-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 20px; margin-bottom: 24px; }
+        .model-card {
+            background: linear-gradient(145deg, #1a1f3a 0%, #0d1025 100%);
+            border: 1px solid rgba(100, 140, 255, 0.12); border-radius: 16px; padding: 24px;
+            position: relative; overflow: hidden; transition: all 0.3s;
+            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.3);
+        }
+        .model-card:hover {
+            border-color: rgba(100, 140, 255, 0.4);
+            box-shadow: 0 8px 32px rgba(100, 140, 255, 0.15);
+            transform: translateY(-4px);
+        }
+        .model-card::before {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; height: 3px;
+            background: linear-gradient(90deg, #6366f1, #8b5cf6, #64f4ac);
+        }
+        .model-card.default::before { background: linear-gradient(90deg, #ffd700, #ff6b35, #ff6b81); }
+        .model-card-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 16px; }
+        .model-card-name { color: #e0e6ed; font-size: 18px; font-weight: 600; }
+        .model-card-code { color: #8892b0; font-size: 12px; font-family: monospace; margin-top: 4px; }
+        .model-card-badge {
+            padding: 3px 10px; border-radius: 20px; font-size: 11px; font-weight: 600;
+        }
+        .badge-default { background: rgba(255, 215, 0, 0.15); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.3); }
+        .badge-enabled { background: rgba(100, 244, 172, 0.1); color: #64f4ac; border: 1px solid rgba(100, 244, 172, 0.2); }
+        .badge-disabled { background: rgba(255, 107, 129, 0.1); color: #ff6b81; border: 1px solid rgba(255, 107, 129, 0.2); }
+        .model-card-stats { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 16px 0; }
+        .model-stat-item { text-align: center; padding: 8px; background: rgba(255, 255, 255, 0.03); border-radius: 8px; }
+        .model-stat-item .num { color: #64b5f6; font-size: 18px; font-weight: 600; }
+        .model-stat-item .lbl { color: #8892b0; font-size: 11px; margin-top: 4px; }
+        .model-card-actions { display: flex; gap: 8px; margin-top: 16px; padding-top: 16px; border-top: 1px solid rgba(255, 255, 255, 0.06); }
+        .model-card-actions button {
+            flex: 1; padding: 8px 0; border: none; border-radius: 8px; cursor: pointer;
+            font-size: 12px; font-weight: 500; transition: all 0.2s;
+        }
+        .btn-test { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; }
+        .btn-test:hover { background: linear-gradient(135deg, #818cf8, #a78bfa); }
+        .btn-edit { background: rgba(100, 181, 246, 0.1); color: #64b5f6; border: 1px solid rgba(100, 181, 246, 0.2) !important; }
+        .btn-edit:hover { background: rgba(100, 181, 246, 0.2); }
+        .btn-delete { background: rgba(255, 107, 129, 0.1); color: #ff6b81; border: 1px solid rgba(255, 107, 129, 0.2) !important; }
+        .btn-delete:hover { background: rgba(255, 107, 129, 0.2); }
+        .btn-default { background: rgba(255, 215, 0, 0.1); color: #ffd700; border: 1px solid rgba(255, 215, 0, 0.2) !important; }
+        .btn-default:hover { background: rgba(255, 215, 0, 0.2); }
+        .model-pagination { display: flex; justify-content: center; margin-top: 24px; }
+        .chat-modal-body { padding: 20px; }
+        .chat-messages { max-height: 400px; overflow-y: auto; padding: 12px; background: #0d1025; border-radius: 12px; margin-bottom: 12px; }
+        .chat-msg { margin-bottom: 12px; padding: 10px 14px; border-radius: 12px; max-width: 85%; }
+        .chat-msg.user { background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff; margin-left: auto; border-bottom-right-radius: 4px; }
+        .chat-msg.assistant { background: #1a1f3a; color: #e0e6ed; border: 1px solid rgba(100, 140, 255, 0.15); border-bottom-left-radius: 4px; }
+        .chat-msg.error { background: rgba(255, 107, 129, 0.1); color: #ff6b81; border: 1px solid rgba(255, 107, 129, 0.2); }
+        .chat-input-area { display: flex; gap: 8px; }
+        .chat-input-area textarea { flex: 1; background: #1a1f3a; border: 1px solid rgba(100, 140, 255, 0.2); color: #e0e6ed; border-radius: 8px; padding: 10px; resize: none; }
+        .token-bar { height: 6px; background: rgba(255, 255, 255, 0.05); border-radius: 3px; margin-top: 8px; overflow: hidden; }
+        .token-bar-fill { height: 100%; background: linear-gradient(90deg, #64f4ac, #64b5f6); border-radius: 3px; transition: width 0.3s; }
+        .page-btn { background: linear-gradient(135deg, #6366f1, #8b5cf6) !important; border: none !important; color: #fff !important; }
+        .page-btn:hover { background: linear-gradient(135deg, #818cf8, #a78bfa) !important; }
+    </style>
+</head>
+<body>
+    <div class="model-page">
+        <div class="model-toolbar">
+            <h2><i class="fas fa-robot"></i> &nbsp;模型引擎管理</h2>
+            <button class="layui-btn page-btn" id="btnAddModel"><i class="layui-icon layui-icon-addition"></i> 新增模型服务</button>
+        </div>
+
+        <div class="model-stats" id="globalStats"></div>
+
+        <div class="model-grid" id="modelGrid"></div>
+
+        <div class="model-pagination" id="pagination"></div>
+    </div>
+
+    <script src="/static/dist/layui/layui.js"></script>
+    <script>
+    layui.use(['layer', 'jquery', 'element'], function() {
+        var layer = layui.layer;
+        var $ = layui.jquery;
+        var currentPage = 1;
+
+        function loadModels(page) {
+            currentPage = page;
+            $.get('/admin/api/model/list?page=' + page + '&limit=6', function(res) {
+                if (res.code === 0) {
+                    renderStats(res.data);
+                    renderGrid(res.data);
+                    renderPagination(res.data);
+                }
+            });
+        }
+
+        function renderStats(data) {
+            var totalReq = 0, totalTokens = 0, totalModels = data.total;
+            var defModel = data.data.find(function(d) { return d.is_default; });
+            data.data.forEach(function(d) { totalReq += d.total_requests; totalTokens += d.total_tokens; });
+            $('#globalStats').html(
+                '<div class="stat-card"><div class="label">模型总数</div><div class="value primary">' + totalModels + '</div></div>' +
+                '<div class="stat-card"><div class="label">累计请求</div><div class="value">' + totalReq.toLocaleString() + '</div></div>' +
+                '<div class="stat-card"><div class="label">累计 Token</div><div class="value warn">' + totalTokens.toLocaleString() + '</div></div>' +
+                '<div class="stat-card"><div class="label">默认模型</div><div class="value">' + (defModel ? defModel.name : '无') + '</div></div>'
+            );
+        }
+
+        function renderGrid(data) {
+            var html = '';
+            data.data.forEach(function(d) {
+                var cardClass = d.is_default ? 'model-card default' : 'model-card';
+                var badge = d.is_default ? '<span class="model-card-badge badge-default">默认模型</span>' :
+                    (d.enabled ? '<span class="model-card-badge badge-enabled">已启用</span>' : '<span class="model-card-badge badge-disabled">已禁用</span>');
+                var tokenMax = Math.max(d.total_tokens, 1);
+                var promptPct = Math.round(d.total_prompt_tokens / tokenMax * 100);
+                var compPct = Math.round(d.total_completion_tokens / tokenMax * 100);
+                html += '<div class="' + cardClass + '">' +
+                    '<div class="model-card-header">' +
+                    '<div><div class="model-card-name">' + d.name + '</div><div class="model-card-code">' + d.model_code + '</div></div>' +
+                    '<div>' + badge + '</div></div>' +
+                    '<div class="model-card-stats">' +
+                    '<div class="model-stat-item"><div class="num">' + d.total_requests + '</div><div class="lbl">请求次数</div></div>' +
+                    '<div class="model-stat-item"><div class="num">' + (d.last_used_at || '未使用') + '</div><div class="lbl">最近使用</div></div>' +
+                    '<div class="model-stat-item"><div class="num">' + d.total_prompt_tokens.toLocaleString() + '</div><div class="lbl">Prompt Tokens</div></div>' +
+                    '<div class="model-stat-item"><div class="num">' + d.total_completion_tokens.toLocaleString() + '</div><div class="lbl">Completion Tokens</div></div>' +
+                    '</div>' +
+                    '<div style="margin: 8px 0;"><div style="display: flex; justify-content: space-between; color: #8892b0; font-size: 11px;"><span>Prompt</span><span>Completion</span></div>' +
+                    '<div style="display: flex; gap: 2px; margin-top: 4px;"><div style="flex: ' + promptPct + '; height: 4px; background: linear-gradient(90deg, #64f4ac, #64b5f6); border-radius: 2px;"></div><div style="flex: ' + compPct + '; height: 4px; background: linear-gradient(90deg, #ffd700, #ff6b35); border-radius: 2px;"></div></div></div>' +
+                    '<div class="model-card-actions">' +
+                    '<button class="btn-test" onclick="openChat(' + d.id + ', \'' + d.name + '\')"><i class="fas fa-comments"></i> 对话测试</button>' +
+                    '<button class="btn-edit" onclick="openEdit(' + d.id + ')"><i class="layui-icon layui-icon-edit"></i> 编辑</button>';
+                if (!d.is_default) {
+                    html += '<button class="btn-default" onclick="setDefault(' + d.id + ')"><i class="fas fa-star"></i> 设为默认</button>' +
+                        '<button class="btn-delete" onclick="deleteModel(' + d.id + ')"><i class="layui-icon layui-icon-delete"></i> 删除</button>';
+                }
+                html += '</div></div>';
+            });
+            $('#modelGrid').html(html);
+        }
+
+        function renderPagination(data) {
+            var html = '<div style="color: #8892b0; font-size: 13px; margin-right: 16px; line-height: 32px;">共 ' + data.total + ' 个模型，第 ' + data.page + '/' + data.total_pages + ' 页</div>';
+            if (data.page > 1) html += '<button class="layui-btn layui-btn-sm" onclick="loadModels(' + (data.page - 1) + ')" style="background: rgba(100, 140, 255, 0.1); border: 1px solid rgba(100, 140, 255, 0.2); color: #64b5f6;">上一页</button> ';
+            if (data.page < data.total_pages) html += '<button class="layui-btn layui-btn-sm" onclick="loadModels(' + (data.page + 1) + ')" style="background: rgba(100, 140, 255, 0.1); border: 1px solid rgba(100, 140, 255, 0.2); color: #64b5f6; margin-left: 8px;">下一页</button>';
+            $('#pagination').html(html);
+        }
+
+        window.loadModels = loadModels;
+
+        loadModels(1);
+
+        $('#btnAddModel').on('click', function() {
+            openModelForm(0, { name: '', api_url: 'https://aigc-api.aitoolcore.com/api/v1/chat/completions', api_key: '', model_code: '', max_tokens: 4096, temperature: 0.7 });
+        });
+
+        window.openModelForm = function(id, d) {
+            layer.open({
+                type: 1, title: id ? '编辑模型' : '新增模型服务', area: ['560px', '520px'],
+                skin: 'layui-layer-nobg', shadeClose: false,
+                content: '<div style="background: linear-gradient(145deg, #1a1f3a 0%, #0d1025 100%); border: 1px solid rgba(100, 140, 255, 0.15); border-radius: 16px; padding: 24px; color: #e0e6ed;">' +
+                    '<form class="layui-form" id="modelForm" lay-filter="modelForm">' +
+                    '<input type="hidden" name="id" value="' + (d.id || id) + '">' +
+                    '<div class="layui-form-item"><label class="layui-form-label" style="color: #8892b0; width: 80px;">名称</label><div class="layui-input-block" style="margin-left: 100px;"><input type="text" name="name" value="' + (d.name || '') + '" required placeholder="模型显示名称" class="layui-input" style="background: #0d1025; border-color: rgba(100, 140, 255, 0.2); color: #e0e6ed;"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label" style="color: #8892b0; width: 80px;">API地址</label><div class="layui-input-block" style="margin-left: 100px;"><input type="text" name="api_url" value="' + (d.api_url || '') + '" required placeholder="https://..." class="layui-input" style="background: #0d1025; border-color: rgba(100, 140, 255, 0.2); color: #e0e6ed;"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label" style="color: #8892b0; width: 80px;">API Key</label><div class="layui-input-block" style="margin-left: 100px;"><input type="password" name="api_key" value="' + (d.api_key || '') + '" required placeholder="sk-..." class="layui-input" style="background: #0d1025; border-color: rgba(100, 140, 255, 0.2); color: #e0e6ed;"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label" style="color: #8892b0; width: 80px;">模型代码</label><div class="layui-input-block" style="margin-left: 100px;"><input type="text" name="model_code" value="' + (d.model_code || '') + '" required placeholder="如: gpt-4, deepseek-v3" class="layui-input" style="background: #0d1025; border-color: rgba(100, 140, 255, 0.2); color: #e0e6ed;"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label" style="color: #8892b0; width: 80px;">Max Tokens</label><div class="layui-input-block" style="margin-left: 100px;"><input type="number" name="max_tokens" value="' + (d.max_tokens || 4096) + '" class="layui-input" style="background: #0d1025; border-color: rgba(100, 140, 255, 0.2); color: #e0e6ed; width: 120px; display: inline-block;"></div></div>' +
+                    '<div class="layui-form-item"><label class="layui-form-label" style="color: #8892b0; width: 80px;">Temperature</label><div class="layui-input-block" style="margin-left: 100px;"><input type="number" name="temperature" value="' + (d.temperature || 0.7) + '" step="0.1" min="0" max="2" class="layui-input" style="background: #0d1025; border-color: rgba(100, 140, 255, 0.2); color: #e0e6ed; width: 120px; display: inline-block;"></div></div>' +
+                    '<div style="text-align: right; margin-top: 20px;">' +
+                    '<button class="layui-btn" lay-submit lay-filter="submitModel" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none;">保存</button>' +
+                    '<button type="button" class="layui-btn layui-btn-primary" id="cancelModelBtn" style="border-color: rgba(100, 140, 255, 0.2); color: #8892b0;">取消</button>' +
+                    '</div></form></div>',
+                success: function() {
+                    layui.form.render();
+                    layui.form.on('submit(submitModel)', function(data2) {
+                        var url = id ? '/admin/api/model/update' : '/admin/api/model/add';
+                        $.post(url, data2.field, function(res) {
+                            if (res.code === 0) {
+                                layer.msg(res.msg, { icon: 1 });
+                                layer.closeAll();
+                                loadModels(currentPage);
+                            } else {
+                                layer.msg(res.msg, { icon: 2 });
+                            }
+                        }, 'json');
+                        return false;
+                    });
+                    $('#cancelModelBtn').on('click', function() { layer.closeAll(); });
+                }
+            });
+        };
+
+        window.openEdit = function(id) {
+            $.get('/admin/api/model/list?page=1&limit=100', function(res) {
+                if (res.code === 0) {
+                    var d = res.data.data.find(function(m) { return m.id === id; });
+                    if (d) openModelForm(id, d);
+                }
+            });
+        };
+
+        window.deleteModel = function(id) {
+            layer.confirm('确认删除该模型？', { icon: 3, title: '提示', skin: 'layui-layer-molv' }, function(idx) {
+                $.post('/admin/api/model/delete', { id: id }, function(res) {
+                    if (res.code === 0) {
+                        layer.msg(res.msg, { icon: 1 });
+                        loadModels(currentPage);
+                    } else {
+                        layer.msg(res.msg, { icon: 2 });
+                    }
+                }, 'json');
+                layer.close(idx);
+            });
+        };
+
+        window.setDefault = function(id) {
+            $.post('/admin/api/model/setdefault', { id: id }, function(res) {
+                if (res.code === 0) {
+                    layer.msg(res.msg, { icon: 1 });
+                    loadModels(currentPage);
+                }
+            }, 'json');
+        };
+
+        window.openChat = function(id, name) {
+            layer.open({
+                type: 1, title: '对话测试 - ' + name, area: ['600px', '600px'],
+                skin: 'layui-layer-nobg',
+                content: '<div style="background: #0d1025; border: 1px solid rgba(100, 140, 255, 0.15); border-radius: 16px; padding: 16px;">' +
+                    '<div class="chat-messages" id="chatMessages"></div>' +
+                    '<div class="chat-input-area">' +
+                    '<textarea id="chatInput" rows="2" placeholder="输入消息..." style="background: #1a1f3a; border: 1px solid rgba(100, 140, 255, 0.2); color: #e0e6ed; border-radius: 8px; padding: 10px; flex: 1;"></textarea>' +
+                    '<button class="layui-btn" id="chatSendBtn" onclick="sendChat(' + id + ')" style="background: linear-gradient(135deg, #6366f1, #8b5cf6); border: none; height: auto; align-self: flex-end;"><i class="fas fa-paper-plane"></i> 发送</button>' +
+                    '</div><div style="margin-top: 8px; color: #8892b0; font-size: 11px;" id="chatTokens"></div></div>',
+                success: function() {
+                    $('#chatInput').on('keydown', function(e) { if (e.keyCode === 13 && !e.shiftKey) { e.preventDefault(); sendChat(id); } });
+                }
+            });
+        };
+
+        window.sendChat = function(id) {
+            var input = $('#chatInput');
+            var msg = input.val().trim();
+            if (!msg) return;
+            input.val('');
+            var $msgs = $('#chatMessages');
+            $msgs.append('<div class="chat-msg user">' + escapeHtml(msg) + '</div>');
+            var $loading = $('<div class="chat-msg assistant" id="chatLoading"><i class="fas fa-spinner fa-spin"></i> 思考中...</div>');
+            $msgs.append($loading);
+            $msgs.scrollTop($msgs[0].scrollHeight);
+
+            var evtSource = new EventSource('/admin/api/model/chat?id=' + id + '&stream=true&messages=' + encodeURIComponent(JSON.stringify([{role: 'user', content: msg}])));
+        };
+
+        var chatMessages = [];
+        window.sendChat = function(id) {
+            var input = $('#chatInput');
+            var msg = input.val().trim();
+            if (!msg) return;
+            input.val('');
+            var $msgs = $('#chatMessages');
+            $msgs.append('<div class="chat-msg user">' + escapeHtml(msg) + '</div>');
+            chatMessages.push({role: 'user', content: msg});
+            var $as = $('<div class="chat-msg assistant" id="chatReply"></div>');
+            $msgs.append($as);
+            $msgs.scrollTop($msgs[0].scrollHeight);
+
+            var btn = $('#chatSendBtn');
+            btn.prop('disabled', true).html('<i class="fas fa-spinner fa-spin"></i>');
+
+            $.ajax({
+                url: '/admin/api/model/chat?id=' + id + '&stream=false',
+                type: 'POST',
+                contentType: 'application/json',
+                data: JSON.stringify({ messages: chatMessages }),
+                success: function(res) {
+                    btn.prop('disabled', false).html('<i class="fas fa-paper-plane"></i> 发送');
+                    if (res.code === 0) {
+                        var reply = res.data.choices && res.data.choices[0] ? res.data.choices[0].message.content : '无回复';
+                        chatMessages.push({role: 'assistant', content: reply});
+                        $('#chatReply').text(reply);
+                        var u = res.data.usage;
+                        if (u) $('#chatTokens').html('Prompt: ' + u.prompt_tokens + ' | Completion: ' + u.completion_tokens + ' | Total: ' + u.total_tokens);
+                    } else {
+                        $('#chatReply').removeClass('assistant').addClass('error').text(res.msg || '请求失败');
+                    }
+                    $msgs.scrollTop($msgs[0].scrollHeight);
+                },
+                error: function() {
+                    btn.prop('disabled', false).html('<i class="fas fa-paper-plane"></i> 发送');
+                    $('#chatReply').removeClass('assistant').addClass('error').text('网络错误');
+                    $msgs.scrollTop($msgs[0].scrollHeight);
+                }
+            });
+        };
+
+        function escapeHtml(t) { var d = document.createElement('div'); d.textContent = t; return d.innerHTML; }
+    });
+    </script>
+</body>
+</html>

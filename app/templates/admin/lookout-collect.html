@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>瞭望采集</title>
+    <link rel="stylesheet" href="/static/dist/fontawesome-free-5.15.4-web/fontawesome-free-5.15.4-web/css/all.min.css">
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        body {
+            background: linear-gradient(135deg, #0a0e27 0%, #1a1040 50%, #0d1117 100%);
+            min-height: 100vh; font-family: 'Segoe UI', sans-serif; color: #e0e6ed;
+            display: flex; flex-direction: column; align-items: center; padding: 40px 20px;
+        }
+        .logo { font-size: 28px; font-weight: 700; margin-bottom: 8px;
+            background: linear-gradient(135deg, #6366f1, #a855f7, #64f4ac);
+            -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
+        .subtitle { color: #8892b0; font-size: 14px; margin-bottom: 40px; }
+        .search-box {
+            width: 100%; max-width: 680px; position: relative; margin-bottom: 24px;
+        }
+        .search-input {
+            width: 100%; padding: 16px 120px 16px 24px; font-size: 16px;
+            background: rgba(255,255,255,0.06); border: 1px solid rgba(100, 140, 255, 0.2);
+            border-radius: 28px; color: #e0e6ed; outline: none; transition: all 0.3s;
+        }
+        .search-input:focus {
+            border-color: rgba(99, 102, 241, 0.6);
+            box-shadow: 0 0 30px rgba(99, 102, 241, 0.15);
+            background: rgba(255,255,255,0.08);
+        }
+        .search-input::placeholder { color: #555d7e; }
+        .search-btn {
+            position: absolute; right: 6px; top: 6px; bottom: 6px; padding: 0 28px;
+            background: linear-gradient(135deg, #6366f1, #8b5cf6); color: #fff;
+            border: none; border-radius: 22px; cursor: pointer; font-size: 15px; font-weight: 500;
+            transition: all 0.3s;
+        }
+        .search-btn:hover { background: linear-gradient(135deg, #818cf8, #a78bfa); }
+        .search-btn:disabled { opacity: 0.6; cursor: not-allowed; }
+        .sources-panel {
+            width: 100%; max-width: 680px; background: rgba(255,255,255,0.04);
+            border: 1px solid rgba(100, 140, 255, 0.1); border-radius: 16px;
+            padding: 20px; margin-bottom: 24px;
+        }
+        .panel-title { font-size: 14px; color: #8892b0; margin-bottom: 16px; display: flex; align-items: center; gap: 8px; }
+        .source-item {
+            display: flex; align-items: center; justify-content: space-between;
+            padding: 12px 16px; background: rgba(255,255,255,0.03); border-radius: 10px;
+            margin-bottom: 8px; transition: all 0.2s; cursor: pointer;
+        }
+        .source-item:hover { background: rgba(255,255,255,0.06); }
+        .source-name { font-size: 14px; color: #c9d1d9; }
+        .toggle-switch { position: relative; width: 44px; height: 24px; cursor: pointer; }
+        .toggle-switch input { display: none; }
+        .toggle-slider {
+            position: absolute; inset: 0; background: rgba(255,255,255,0.1);
+            border-radius: 12px; transition: all 0.3s;
+        }
+        .toggle-slider::before {
+            content: ''; position: absolute; width: 18px; height: 18px;
+            left: 3px; top: 3px; background: #fff; border-radius: 50%; transition: all 0.3s;
+        }
+        .toggle-switch input:checked + .toggle-slider { background: linear-gradient(135deg, #6366f1, #8b5cf6); }
+        .toggle-switch input:checked + .toggle-slider::before { left: 23px; }
+        .config-row {
+            display: flex; gap: 16px; margin-top: 16px; padding-top: 16px;
+            border-top: 1px solid rgba(255,255,255,0.06); flex-wrap: wrap;
+        }
+        .config-item { flex: 1; min-width: 150px; }
+        .config-item label { display: block; font-size: 12px; color: #8892b0; margin-bottom: 6px; }
+        .config-item input {
+            width: 100%; padding: 8px 12px; background: rgba(255,255,255,0.05);
+            border: 1px solid rgba(100, 140, 255, 0.15); border-radius: 8px;
+            color: #e0e6ed; font-size: 14px; outline: none;
+        }
+        .config-item input:focus { border-color: rgba(99, 102, 241, 0.4); }
+        .result-area {
+            width: 100%; max-width: 680px; display: none;
+        }
+        .result-area.show { display: block; }
+        .result-card {
+            background: rgba(255,255,255,0.04); border: 1px solid rgba(100, 140, 255, 0.1);
+            border-radius: 12px; padding: 16px; margin-bottom: 12px; cursor: pointer; transition: all 0.2s;
+        }
+        .result-card:hover { background: rgba(255,255,255,0.06); border-color: rgba(99, 102, 241, 0.3); }
+        .result-card h4 { color: #64f4ac; font-size: 14px; margin-bottom: 6px; }
+        .result-card p { color: #8892b0; font-size: 13px; line-height: 1.5; }
+        .result-stats {
+            text-align: center; padding: 16px; color: #64b5f6; font-size: 16px;
+        }
+        .loading { text-align: center; padding: 40px; display: none; }
+        .loading.show { display: block; }
+        .loading-spinner {
+            width: 40px; height: 40px; border: 3px solid rgba(100, 140, 255, 0.15);
+            border-top-color: #6366f1; border-radius: 50%; animation: spin 0.8s linear infinite;
+            margin: 0 auto 16px;
+        }
+        @keyframes spin { to { transform: rotate(360deg); } }
+    </style>
+</head>
+<body>
+    <div class="logo"><i class="fas fa-satellite-dish"></i> 智能瞭望采集</div>
+    <div class="subtitle">AI驱动的智能数据采集引擎 · 一键采集全网资讯</div>
+
+    <div class="search-box">
+        <input type="text" class="search-input" id="keywordInput" placeholder="输入采集关键字，按回车键开始采集...">
+        <button class="search-btn" id="collectBtn"><i class="fas fa-bolt"></i> 开始采集</button>
+    </div>
+
+    <div class="sources-panel">
+        <div class="panel-title"><i class="fas fa-plug"></i> 选择采集源</div>
+        <div id="sourceList"></div>
+        <div class="config-row">
+            <div class="config-item">
+                <label><i class="fas fa-layer-group"></i> 每页采集数量</label>
+                <input type="number" id="countInput" value="10" min="1" max="50">
+            </div>
+            <div class="config-item">
+                <label><i class="fas fa-file-alt"></i> 采集页数</label>
+                <input type="number" id="pagesInput" value="1" min="1" max="10">
+            </div>
+        </div>
+    </div>
+
+    <div class="loading" id="loadingArea">
+        <div class="loading-spinner"></div>
+        <div style="color: #8892b0;">正在采集数据，请稍候...</div>
+    </div>
+
+    <div class="result-area" id="resultArea"></div>
+
+    <script>
+    var sources = [];
+    var $ = function(sel) { return document.querySelector(sel); };
+
+    function loadSources() {
+        fetch('/admin/api/lookout/source/list')
+            .then(function(r) { return r.json(); })
+            .then(function(res) {
+                sources = res.data || [];
+                renderSources();
+            });
+    }
+
+    function renderSources() {
+        var html = '';
+        sources.forEach(function(s, i) {
+            html += '<div class="source-item">' +
+                '<span class="source-name"><i class="fas fa-globe" style="margin-right: 8px; color: #6366f1;"></i>' + s.name + '</span>' +
+                '<label class="toggle-switch">' +
+                '<input type="checkbox" class="source-toggle" data-id="' + s.id + '" ' + (i === 0 ? 'checked' : '') + '>' +
+                '<span class="toggle-slider"></span></label></div>';
+        });
+        if (!sources.length) html = '<div style="color: #555d7e; text-align: center; padding: 20px;">暂无采集源，请先在"瞭源管理"中配置</div>';
+        $('#sourceList').innerHTML = html;
+    }
+
+    loadSources();
+
+    function doCollect() {
+        var keyword = $('#keywordInput').value.trim();
+        if (!keyword) { alert('请输入关键字'); return; }
+
+        var activeSources = [];
+        document.querySelectorAll('.source-toggle:checked').forEach(function(cb) {
+            activeSources.push(parseInt(cb.dataset.id));
+        });
+        if (!activeSources.length) { alert('请至少选择一个采集源'); return; }
+
+        var pages = parseInt($('#pagesInput').value) || 1;
+        $('#collectBtn').disabled = true;
+        $('#collectBtn').innerHTML = '<i class="fas fa-spinner fa-spin"></i> 采集中...';
+        $('#loadingArea').classList.add('show');
+        $('#resultArea').classList.remove('show');
+
+        fetch('/admin/api/lookout/collect/run', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ source_ids: activeSources, keywords: keyword, pages: pages })
+        })
+        .then(function(r) { return r.json(); })
+        .then(function(res) {
+            $('#collectBtn').disabled = false;
+            $('#collectBtn').innerHTML = '<i class="fas fa-bolt"></i> 开始采集';
+            $('#loadingArea').classList.remove('show');
+
+            if (res.code === 0) {
+                var items = res.data.items || [];
+                if (items.length === 0) {
+                    $('#resultArea').innerHTML = '<div class="result-card"><h4 style="color: #ff6b81;"><i class="fas fa-info-circle"></i> 未采集到数据</h4><p>请尝试更换关键字或采集源</p></div>';
+                } else {
+                    var html = '<div class="result-stats"><i class="fas fa-check-circle"></i> 采集完成，共 ' + res.data.total + ' 条数据</div>';
+                    items.forEach(function(item) {
+                        var url = item.url || item.source_url || '#';
+                        html += '<div class="result-card" data-url="' + url + '">' +
+                            '<h4>' + (item.title || '无标题') + '</h4>' +
+                            '<p>' + (item.summary || item.content || '') + '</p>' +
+                            (item.publish_time ? '<p style="margin-top: 4px; font-size: 12px;"><i class="fas fa-clock"></i> ' + item.publish_time + '</p>' : '') +
+                            (item.source_name ? '<p style="margin-top: 4px; font-size: 12px;"><i class="fas fa-tag"></i> ' + item.source_name + '</p>' : '') +
+                            '</div>';
+                    });
+                    $('#resultArea').innerHTML = html;
+                    // 点击卡片跳转
+                    document.querySelectorAll('.result-card[data-url]').forEach(function(card) {
+                        card.addEventListener('click', function() {
+                            var u = card.getAttribute('data-url');
+                            if (u && u !== '#') window.open(u, '_blank');
+                        });
+                    });
+                }
+                $('#resultArea').classList.add('show');
+            } else {
+                $('#resultArea').innerHTML = '<div class="result-card" style="border-color: rgba(255,107,129,0.3);"><h4 style="color: #ff6b81;"><i class="fas fa-exclamation-triangle"></i> 采集失败</h4><p>' + res.msg + '</p></div>';
+                $('#resultArea').classList.add('show');
+            }
+        })
+        .catch(function(err) {
+            $('#collectBtn').disabled = false;
+            $('#collectBtn').innerHTML = '<i class="fas fa-bolt"></i> 开始采集';
+            $('#loadingArea').classList.remove('show');
+            alert('网络错误：' + err.message);
+        });
+    }
+
+    $('#collectBtn').addEventListener('click', doCollect);
+
+    $('#keywordInput').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') doCollect();
+    });
+    </script>
+</body>
+</html>
